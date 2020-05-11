@@ -53,3 +53,158 @@
 #
 ########################################################################################################################
 ########################################################################################################################
+
+import cv2
+import numpy as np
+import processing
+import bin
+import hsv
+
+# video capture
+cap = cv2.VideoCapture(0)
+
+# input video frame properties
+_, frame = cap.read()
+HEIGHT = frame.shape[0]
+WIDTH = frame.shape[1]
+
+# defining player areas and it's coordinates
+gap = 20
+p1_x1, p1_y1 = (gap, int(HEIGHT / 3))
+p1_x2, p1_y2 = (int(WIDTH / 2 - gap), HEIGHT - gap)
+p2_x1, p2_y1 = (int(WIDTH / 2 + gap), int(HEIGHT / 3))
+p2_x2, p2_y2 = (int(WIDTH - gap), HEIGHT - gap)
+
+# sample positions
+sampling_permission = False
+timer = 0
+sample_sq_len = 10
+p1_sample_images = []
+p2_sample_images = []
+sample_coordinates = [
+    (100, 262),
+    (138, 225),
+    (164, 225),
+    (197, 241),
+    (104, 328),
+    (143, 302),
+    (168, 292),
+    (193, 299),
+    (217, 323),
+    (108, 389),
+    (154, 356),
+    (207, 365),
+    (129, 414),
+    (178, 404)
+]
+
+# player variables
+p1_thresholds = None
+p2_thresholds = None
+
+# game variables
+game_state = 0  # 0: beginning, 1: game on, 2:game over
+
+
+def click_event(event, x, y, flags, params):
+    # left click: image pixel coordinate
+    if event == cv2.EVENT_LBUTTONDOWN:
+        cord = '(' + str(x) + ', ' + str(y) + ')'
+        print('(X,Y) =', cord)
+
+
+while cap.isOpened():
+
+    # read frame
+    ret, frame = cap.read()
+
+    # flip image frame
+    frame = cv2.flip(frame, 1)
+
+    # cutout two sub images representing player areas
+    player_1_img = frame[p1_y1:p1_y2, p1_x1:p1_x2, :].copy()
+    player_2_img = frame[p2_y1:p2_y2, p2_x1:p2_x2, :].copy()
+
+    # draw demarcation areas on the frame
+    cv2.line(frame, (int(WIDTH / 2), 0), (int(WIDTH / 2), HEIGHT), (0, 255, 0), 2)
+    cv2.rectangle(frame, (p1_x1, p1_y1), (p1_x2, p1_y2), (0, 255, 0), 2)
+    cv2.rectangle(frame, (p2_x1, p2_y1), (p2_x2, p2_y2), (0, 255, 0), 2)
+
+    # BEGINNING:
+    # init game and get the thresholds
+    if game_state == 0:
+
+        # use the line of code below to extract coordinates
+        # cv2.setMouseCallback('frame', click_event)
+
+        if sampling_permission:
+            for coordinate in sample_coordinates:
+                # cut the images and store it in a list
+                p1_sample_images.append(frame[y:(y + sample_sq_len), x:(x + sample_sq_len), :].copy())
+                p2_sample_images.append(
+                    frame[y:(y + sample_sq_len), (x + int(WIDTH / 2)):(x + int(WIDTH / 2) + sample_sq_len), :].copy())
+
+            # end of beginning
+            game_state += 1
+
+            # get the thresholds
+            p1_thresholds = processing.get_thresholds(p1_sample_images)
+            p2_thresholds = processing.get_thresholds(p2_sample_images)
+
+        for coordinate in sample_coordinates:
+            # unpack the x and y
+            x, y = coordinate
+
+            # show the sampling squares
+            cv2.rectangle(frame, (x, y), (x + sample_sq_len, y + sample_sq_len), (255, 0, 0), 1)
+            cv2.rectangle(frame, (x + int(WIDTH / 2), y), (x + int(WIDTH / 2) + sample_sq_len, y + sample_sq_len),
+                          (255, 0, 0), 1)
+
+        cv2.imshow('frame', frame)
+        if cv2.waitKey(25) & 0xFF == ord('q'):
+            break
+        timer += 1.0
+        print(timer)
+
+        if timer == 300.0:
+            timer = 0
+            sampling_permission = True
+
+        continue
+
+    # GAME ON
+    b_t = []
+    l_h_t = []
+    l_s_t = []
+    l_v_t = []
+    u_h_t = []
+    u_s_t = []
+    u_v_t = []
+    for th in p1_thresholds:
+        bin_thresh, hsv_thresh_low, hsv_thresh_up = th
+        l_h, l_s, l_v = hsv_thresh_low
+        u_h, u_s, u_v = hsv_thresh_up
+        b_t.append(bin_thresh)
+        l_h_t.append(l_h)
+        l_s_t.append(l_s)
+        l_v_t.append(l_v)
+        u_h_t.append(u_h)
+        u_s_t.append(u_s)
+        u_v_t.append(u_v)
+
+    player_1_img_bin = bin.get_bin_thresh_image(player_1_img, int(sum(b_t) / len(b_t)))
+    lb = [int(sum(l_h_t) / len(l_h_t)), int(sum(l_s_t) / len(l_s_t)), int(sum(l_v_t) / len(l_v_t))]
+    ub = [int(sum(u_h_t) / len(u_h_t)), int(sum(u_s_t) / len(u_s_t)), int(sum(u_v_t) / len(u_v_t))]
+    player_1_img_hsv = hsv.get_hsv_thresh_image(player_1_img, lb, ub)
+
+    # display the frame
+    cv2.imshow('frame', frame)
+    cv2.imshow('player_1_img_bin', player_1_img_bin)
+    cv2.imshow('player_1_img_hsv', player_1_img_hsv)
+
+    if cv2.waitKey(25) & 0xFF == ord('q'):
+        break
+
+# when everything done, release the capture
+cap.release()
+cv2.destroyAllWindows()
