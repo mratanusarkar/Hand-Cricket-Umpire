@@ -18,7 +18,7 @@ def get_bin_thresh(img, maxval=255):
     threshold = 0
 
     while True:
-        _, img_bin = cv2.threshold(img_gray, threshold, maxval, cv2.THRESH_BINARY_INV)
+        _, img_bin = cv2.threshold(img_gray, threshold, maxval, cv2.THRESH_BINARY)
         if threshold == maxval:
             break
         if np.array_equal(img_bin, desired):
