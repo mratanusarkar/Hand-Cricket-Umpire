@@ -99,8 +99,10 @@ sample_coordinates = [
 ]
 
 # player variables
-p1_thresholds = None
-p2_thresholds = None
+p1_bin_thresholds = None
+p1_hsv_thresholds = None
+p2_bin_thresholds = None
+p2_hsv_thresholds = None
 
 # game variables
 game_state = 0  # 0: beginning, 1: game on, 2:game over
@@ -148,9 +150,12 @@ while cap.isOpened():
             game_state += 1
 
             # get the thresholds
-            p1_thresholds = processing.get_thresholds(p1_sample_images)
-            p2_thresholds = processing.get_thresholds(p2_sample_images)
+            p1_bin_thresholds = processing.get_bin_thresh_list(p1_sample_images)
+            p2_bin_thresholds = processing.get_bin_thresh_list(p2_sample_images)
+            p1_hsv_thresholds = processing.get_hsv_thresh_list(p1_sample_images)
+            p2_hsv_thresholds = processing.get_hsv_thresh_list(p2_sample_images)
 
+        # draw small squares to show the sampling areas in the images
         for coordinate in sample_coordinates:
             # unpack the x and y
             x, y = coordinate
@@ -170,37 +175,24 @@ while cap.isOpened():
             timer = 0
             sampling_permission = True
 
+        # do not proceed further until successful sampling is done and correct thresholds are obtained
         continue
 
-    # GAME ON
-    b_t = []
-    l_h_t = []
-    l_s_t = []
-    l_v_t = []
-    u_h_t = []
-    u_s_t = []
-    u_v_t = []
-    for th in p1_thresholds:
-        bin_thresh, hsv_thresh_low, hsv_thresh_up = th
-        l_h, l_s, l_v = hsv_thresh_low
-        u_h, u_s, u_v = hsv_thresh_up
-        b_t.append(bin_thresh)
-        l_h_t.append(l_h)
-        l_s_t.append(l_s)
-        l_v_t.append(l_v)
-        u_h_t.append(u_h)
-        u_s_t.append(u_s)
-        u_v_t.append(u_v)
+    # get the threshold images
+    p1_bin_images = processing.get_bin_images_from_thresh_list(player_1_img, p1_bin_thresholds)
+    p1_hsv_images = processing.get_hsv_images_from_thresh_list(player_1_img, p1_hsv_thresholds)
+    p2_bin_images = processing.get_bin_images_from_thresh_list(player_2_img, p2_bin_thresholds)
+    p2_hsv_images = processing.get_hsv_images_from_thresh_list(player_2_img, p2_hsv_thresholds)
 
-    player_1_img_bin = bin.get_bin_thresh_image(player_1_img, int(sum(b_t) / len(b_t)))
-    lb = [int(sum(l_h_t) / len(l_h_t)), int(sum(l_s_t) / len(l_s_t)), int(sum(l_v_t) / len(l_v_t))]
-    ub = [int(sum(u_h_t) / len(u_h_t)), int(sum(u_s_t) / len(u_s_t)), int(sum(u_v_t) / len(u_v_t))]
-    player_1_img_hsv = hsv.get_hsv_thresh_image(player_1_img, lb, ub)
+    p1_frame, p1_move = processing.get_player_move(player_1_img, p1_bin_thresholds, p1_hsv_thresholds)
+    p2_frame, p2_move = processing.get_player_move(player_2_img, p2_bin_thresholds, p2_hsv_thresholds)
+
+    print("P1: " + str(p1_move) + "-----" + "P2: " + str(p2_move))
 
     # display the frame
     cv2.imshow('frame', frame)
-    cv2.imshow('player_1_img_bin', player_1_img_bin)
-    cv2.imshow('player_1_img_hsv', player_1_img_hsv)
+    cv2.imshow('p1_frame', p1_frame)
+    cv2.imshow('p2_frame', p2_frame)
 
     if cv2.waitKey(25) & 0xFF == ord('q'):
         break
