@@ -32,7 +32,6 @@ def get_hsv_images_from_samples(sample_image_list):
 
 def get_bin_images_from_thresh_list(image, bin_thresh_list):
     """
-
     :param image: every frame of the video
     :param bin_thresh_list: the binary thresh list obtained at the beginning
     :return:
@@ -46,7 +45,6 @@ def get_bin_images_from_thresh_list(image, bin_thresh_list):
 
 def get_hsv_images_from_thresh_list(image, hsv_thresh_list):
     """
-
     :param image: every frame of the video
     :param hsv_thresh_list: the hsv thresh list obtained at the beginning
     :return:
@@ -75,22 +73,35 @@ def get_hsv_thresh_list(sample_image_list):
     return hsv_thresh_list
 
 
+# TODO
+def statistical_thresholding(image, number_of_blocks, threshold_type, statistical_measure):
+    """
+    :param image: expected to be a square image (m x m x 3) or (m x m x 1), where m is even
+    :param number_of_blocks: if number_of_blocks = n, the image will be split into n^2 small sub-images
+    :param threshold_type: "bin" or "hsv" ?
+    :param statistical_measure: "mean", "median" or "mode"?
+    :return: compute the threshold for each sub-image of entered type and return it's "mean", "median" or "mode"
+    as entered in statistical_measure, which is a much more accurate threshold parameter.
+    """
+    pass
+
+
 def get_player_move(img, bin_thresh, hsv_thresh):
     # return variable
-    move_estimate = -1
+    move_estimate = 0
 
     # get the threshold images
     bin_images = get_bin_images_from_thresh_list(img, bin_thresh)
     hsv_images = get_hsv_images_from_thresh_list(img, hsv_thresh)
 
-    # combine them
-    img_hand = np.zeros_like(bin_images[0])
+    # combine them to get the ultimate 2D bin image of the hand
+    img_th_combined = np.zeros_like(bin_images[0])
     for i in range(len(bin_images)):
-        img_hand = img_hand + bin_images[i] + hsv_images[i]
+        img_th_combined = img_th_combined + bin_images[i] + hsv_images[i]
 
     # dilate and blur to remove the noises
     kernel = np.ones((3, 3), np.uint8)
-    img_hand = cv2.dilate(img_hand, kernel, iterations=2)
+    img_hand = cv2.dilate(img_th_combined, kernel, iterations=2)
     img_hand = cv2.GaussianBlur(img_hand, (5, 5), 100)
 
     # find contours
@@ -112,6 +123,9 @@ def get_player_move(img, bin_thresh, hsv_thresh):
 
     # calculate area ratio := contour area / hull area
     area_ratio = ((area_hull - area_contour) / area_hull) * 100
+
+    # calibration
+    # print("area_hand / area_hull", (area_contour/area_hull))
     # print(area_ratio)
 
     # find defects in the convex hull w.r.t hand
@@ -186,9 +200,10 @@ def get_player_move(img, bin_thresh, hsv_thresh):
             else:
                 # cv2.putText(img, "Reposition Your Hand", (0, 50), font, 2, (0, 0, 255), 3, line)
                 print("Reposition Your Hand")
-                move_estimate = -1
+                move_estimate = -2
     except:
         print("No hand and defects fount! error in processing the image!")
-        move_estimate = -1
+        move_estimate = -3
 
-    return img, move_estimate
+    # return the move, the modified frame, the binary image of the hand
+    return move_estimate, img, img_th_combined
