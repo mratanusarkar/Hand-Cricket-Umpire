@@ -178,21 +178,78 @@ while cap.isOpened():
         # do not proceed further until successful sampling is done and correct thresholds are obtained
         continue
 
-    # get the threshold images
-    p1_bin_images = processing.get_bin_images_from_thresh_list(player_1_img, p1_bin_thresholds)
-    p1_hsv_images = processing.get_hsv_images_from_thresh_list(player_1_img, p1_hsv_thresholds)
-    p2_bin_images = processing.get_bin_images_from_thresh_list(player_2_img, p2_bin_thresholds)
-    p2_hsv_images = processing.get_hsv_images_from_thresh_list(player_2_img, p2_hsv_thresholds)
+    # GAME ON:
+    # its a loop for each ball
+    if game_state == 1:
+        # 3.. 2.. 1.. Play!!
 
-    p1_frame, p1_move = processing.get_player_move(player_1_img, p1_bin_thresholds, p1_hsv_thresholds)
-    p2_frame, p2_move = processing.get_player_move(player_2_img, p2_bin_thresholds, p2_hsv_thresholds)
+        # PROCESSING
+        # get the threshold images
+        p1_bin_images = processing.get_bin_images_from_thresh_list(player_1_img, p1_bin_thresholds)
+        p1_hsv_images = processing.get_hsv_images_from_thresh_list(player_1_img, p1_hsv_thresholds)
+        p2_bin_images = processing.get_bin_images_from_thresh_list(player_2_img, p2_bin_thresholds)
+        p2_hsv_images = processing.get_hsv_images_from_thresh_list(player_2_img, p2_hsv_thresholds)
 
-    print("P1: " + str(p1_move) + "-----" + "P2: " + str(p2_move))
+        # get both the player moves
+        p1_move, p1_frame, p1_bin = processing.get_player_move(player_1_img, p1_bin_thresholds, p1_hsv_thresholds)
+        p2_move, p2_frame, p2_bin = processing.get_player_move(player_2_img, p2_bin_thresholds, p2_hsv_thresholds)
 
-    # display the frame
-    cv2.imshow('frame', frame)
-    cv2.imshow('p1_frame', p1_frame)
-    cv2.imshow('p2_frame', p2_frame)
+        # print("P1: " + str(p1_move) + "-----" + "P2: " + str(p2_move))
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        line = cv2.LINE_AA
+
+        # player 1
+        if p1_move == 0:
+            cv2.putText(frame, "0", (0, 50), font, 2, (0, 0, 255), 3, line)
+        elif p1_move == 1:
+            cv2.putText(frame, "1", (0, 50), font, 2, (0, 0, 255), 3, line)
+        elif p1_move == 2:
+            cv2.putText(frame, "2", (0, 50), font, 2, (0, 0, 255), 3, line)
+        elif p1_move == 3:
+            cv2.putText(frame, "3", (0, 50), font, 2, (0, 0, 255), 3, line)
+        elif p1_move == 4:
+            cv2.putText(frame, "4", (0, 50), font, 2, (0, 0, 255), 3, line)
+        elif p1_move == 5:
+            cv2.putText(frame, "5", (0, 50), font, 2, (0, 0, 255), 3, line)
+        elif p1_move == 6:
+            cv2.putText(frame, "6", (0, 50), font, 2, (0, 0, 255), 3, line)
+        elif p1_move == -1:
+            cv2.putText(frame, "No Hand Detected", (0, 50), font, 2, (0, 0, 255), 3, line)
+        elif p1_move == -2:
+            cv2.putText(frame, "Reposition Your Hand", (0, 50), font, 2, (0, 0, 255), 3, line)
+        elif p1_move == -3:
+            cv2.putText(frame, "error!", (0, 50), font, 2, (0, 0, 255), 3, line)
+
+        # player 2
+        if p2_move == 0:
+            cv2.putText(frame, "0", (WIDTH-50, 50), font, 2, (0, 0, 255), 3, line)
+        elif p2_move == 1:
+            cv2.putText(frame, "1", (WIDTH-50, 50), font, 2, (0, 0, 255), 3, line)
+        elif p2_move == 2:
+            cv2.putText(frame, "2", (WIDTH-50, 50), font, 2, (0, 0, 255), 3, line)
+        elif p2_move == 3:
+            cv2.putText(frame, "3", (WIDTH-50, 50), font, 2, (0, 0, 255), 3, line)
+        elif p2_move == 4:
+            cv2.putText(frame, "4", (WIDTH-50, 50), font, 2, (0, 0, 255), 3, line)
+        elif p2_move == 5:
+            cv2.putText(frame, "5", (WIDTH-50, 50), font, 2, (0, 0, 255), 3, line)
+        elif p2_move == 6:
+            cv2.putText(frame, "6", (WIDTH-50, 50), font, 2, (0, 0, 255), 3, line)
+        elif p2_move == -1:
+            cv2.putText(frame, "No Hand Detected", (WIDTH-50, 50), font, 2, (0, 0, 255), 3, line)
+        elif p2_move == -2:
+            cv2.putText(frame, "Reposition Your Hand", (WIDTH-50, 50), font, 2, (0, 0, 255), 3, line)
+        elif p2_move == -3:
+            cv2.putText(frame, "error!", (WIDTH-50, 50), font, 2, (0, 0, 255), 3, line)
+
+        # merge the player outputs to the main frame
+        frame[p1_y1:p1_y2, p1_x1:p1_x2, :] = p1_frame
+        frame[p2_y1:p2_y2, p2_x1:p2_x2, :] = p2_frame
+
+        # display the frame
+        cv2.imshow('frame', frame)
+        cv2.imshow('player 1 thresh', p1_bin)
+        cv2.imshow('player 2 thresh', p2_bin)
 
     if cv2.waitKey(25) & 0xFF == ord('q'):
         break
