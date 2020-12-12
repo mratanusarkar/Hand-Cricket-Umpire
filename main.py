@@ -54,13 +54,14 @@
 ########################################################################################################################
 ########################################################################################################################
 
-import cv2
 import numpy as np
+import pygame
+import cv2
 import processing
 import bin
 import hsv
 
-# video capture
+# opencv video capture
 cap = cv2.VideoCapture(0)
 
 # input video frame properties
@@ -68,54 +69,33 @@ _, frame = cap.read()
 HEIGHT = frame.shape[0]
 WIDTH = frame.shape[1]
 
-# defining player areas and it's coordinates
-gap = 20
-p1_x1, p1_y1 = (gap, int(HEIGHT / 3))
-p1_x2, p1_y2 = (int(WIDTH / 2 - gap), HEIGHT - gap)
-p2_x1, p2_y1 = (int(WIDTH / 2 + gap), int(HEIGHT / 3))
-p2_x2, p2_y2 = (int(WIDTH - gap), HEIGHT - gap)
+# initialize pygame
+pygame.init()
 
-# sample positions
-sampling_permission = False
-timer = 0
-sample_sq_len = 10
-p1_sample_images = []
-p2_sample_images = []
-sample_coordinates = [
-    (100, 262),
-    (138, 225),
-    (164, 225),
-    (197, 241),
-    (104, 328),
-    (143, 302),
-    (168, 292),
-    (193, 299),
-    (217, 323),
-    (108, 389),
-    (154, 356),
-    (207, 365),
-    (129, 414),
-    (178, 404)
-]
+# global variables
+running = True
 
-# player variables
-p1_bin_thresholds = None
-p1_hsv_thresholds = None
-p2_bin_thresholds = None
-p2_hsv_thresholds = None
+# Input key states (keyboard)
+Q_KEY_PRESSED = False
+ESC_KEY_PRESSED = False
 
-# game variables
-game_state = 0  # 0: beginning, 1: game on, 2:game over
+# create display window
+window = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Hand Cricket")
 
+# main game loop begins
+while running:
 
-def click_event(event, x, y, flags, params):
-    # left click: image pixel coordinate
-    if event == cv2.EVENT_LBUTTONDOWN:
-        cord = '(' + str(x) + ', ' + str(y) + ')'
-        print('(X,Y) =', cord)
+    # clear last frame
+    window.fill((0, 0, 0))
 
-
-while cap.isOpened():
+    # register events
+    for event in pygame.event.get():
+        # Quit Event
+        if event.type == pygame.QUIT:
+            running = False
+            cap.release()
+            cv2.destroyAllWindows()
 
     # read frame
     ret, frame = cap.read()
@@ -123,137 +103,12 @@ while cap.isOpened():
     # flip image frame
     frame = cv2.flip(frame, 1)
 
-    # cutout two sub images representing player areas
-    player_1_img = frame[p1_y1:p1_y2, p1_x1:p1_x2, :].copy()
-    player_2_img = frame[p2_y1:p2_y2, p2_x1:p2_x2, :].copy()
+    bg_img = pygame.surfarray.make_surface(frame)
 
-    # draw demarcation areas on the frame
-    cv2.line(frame, (int(WIDTH / 2), 0), (int(WIDTH / 2), HEIGHT), (0, 255, 0), 2)
-    cv2.rectangle(frame, (p1_x1, p1_y1), (p1_x2, p1_y2), (0, 255, 0), 2)
-    cv2.rectangle(frame, (p2_x1, p2_y1), (p2_x2, p2_y2), (0, 255, 0), 2)
+    # render the background
+    window.blit(bg_img, (0, 0))
 
-    # BEGINNING:
-    # init game and get the thresholds
-    if game_state == 0:
+    # render the display
+    pygame.display.update()
 
-        # use the line of code below to extract coordinates
-        # cv2.setMouseCallback('frame', click_event)
-
-        if sampling_permission:
-            for coordinate in sample_coordinates:
-                # cut the images and store it in a list
-                p1_sample_images.append(frame[y:(y + sample_sq_len), x:(x + sample_sq_len), :].copy())
-                p2_sample_images.append(
-                    frame[y:(y + sample_sq_len), (x + int(WIDTH / 2)):(x + int(WIDTH / 2) + sample_sq_len), :].copy())
-
-            # end of beginning
-            game_state += 1
-
-            # get the thresholds
-            p1_bin_thresholds = processing.get_bin_thresh_list(p1_sample_images)
-            p2_bin_thresholds = processing.get_bin_thresh_list(p2_sample_images)
-            p1_hsv_thresholds = processing.get_hsv_thresh_list(p1_sample_images)
-            p2_hsv_thresholds = processing.get_hsv_thresh_list(p2_sample_images)
-
-        # draw small squares to show the sampling areas in the images
-        for coordinate in sample_coordinates:
-            # unpack the x and y
-            x, y = coordinate
-
-            # show the sampling squares
-            cv2.rectangle(frame, (x, y), (x + sample_sq_len, y + sample_sq_len), (255, 0, 0), 1)
-            cv2.rectangle(frame, (x + int(WIDTH / 2), y), (x + int(WIDTH / 2) + sample_sq_len, y + sample_sq_len),
-                          (255, 0, 0), 1)
-
-        cv2.imshow('frame', frame)
-        if cv2.waitKey(25) & 0xFF == ord('q'):
-            break
-        timer += 1.0
-        print(timer)
-
-        if timer == 300.0:
-            timer = 0
-            sampling_permission = True
-
-        # do not proceed further until successful sampling is done and correct thresholds are obtained
-        continue
-
-    # GAME ON:
-    # its a loop for each ball
-    if game_state == 1:
-        # 3.. 2.. 1.. Play!!
-
-        # PROCESSING
-        # get the threshold images
-        p1_bin_images = processing.get_bin_images_from_thresh_list(player_1_img, p1_bin_thresholds)
-        p1_hsv_images = processing.get_hsv_images_from_thresh_list(player_1_img, p1_hsv_thresholds)
-        p2_bin_images = processing.get_bin_images_from_thresh_list(player_2_img, p2_bin_thresholds)
-        p2_hsv_images = processing.get_hsv_images_from_thresh_list(player_2_img, p2_hsv_thresholds)
-
-        # get both the player moves
-        p1_move, p1_frame, p1_bin = processing.get_player_move(player_1_img, p1_bin_thresholds, p1_hsv_thresholds)
-        p2_move, p2_frame, p2_bin = processing.get_player_move(player_2_img, p2_bin_thresholds, p2_hsv_thresholds)
-
-        # print("P1: " + str(p1_move) + "-----" + "P2: " + str(p2_move))
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        line = cv2.LINE_AA
-
-        # player 1
-        if p1_move == 0:
-            cv2.putText(frame, "0", (0, 50), font, 2, (0, 0, 255), 3, line)
-        elif p1_move == 1:
-            cv2.putText(frame, "1", (0, 50), font, 2, (0, 0, 255), 3, line)
-        elif p1_move == 2:
-            cv2.putText(frame, "2", (0, 50), font, 2, (0, 0, 255), 3, line)
-        elif p1_move == 3:
-            cv2.putText(frame, "3", (0, 50), font, 2, (0, 0, 255), 3, line)
-        elif p1_move == 4:
-            cv2.putText(frame, "4", (0, 50), font, 2, (0, 0, 255), 3, line)
-        elif p1_move == 5:
-            cv2.putText(frame, "5", (0, 50), font, 2, (0, 0, 255), 3, line)
-        elif p1_move == 6:
-            cv2.putText(frame, "6", (0, 50), font, 2, (0, 0, 255), 3, line)
-        elif p1_move == -1:
-            cv2.putText(frame, "No Hand Detected", (0, 50), font, 2, (0, 0, 255), 3, line)
-        elif p1_move == -2:
-            cv2.putText(frame, "Reposition Your Hand", (0, 50), font, 2, (0, 0, 255), 3, line)
-        elif p1_move == -3:
-            cv2.putText(frame, "error!", (0, 50), font, 2, (0, 0, 255), 3, line)
-
-        # player 2
-        if p2_move == 0:
-            cv2.putText(frame, "0", (WIDTH-50, 50), font, 2, (0, 0, 255), 3, line)
-        elif p2_move == 1:
-            cv2.putText(frame, "1", (WIDTH-50, 50), font, 2, (0, 0, 255), 3, line)
-        elif p2_move == 2:
-            cv2.putText(frame, "2", (WIDTH-50, 50), font, 2, (0, 0, 255), 3, line)
-        elif p2_move == 3:
-            cv2.putText(frame, "3", (WIDTH-50, 50), font, 2, (0, 0, 255), 3, line)
-        elif p2_move == 4:
-            cv2.putText(frame, "4", (WIDTH-50, 50), font, 2, (0, 0, 255), 3, line)
-        elif p2_move == 5:
-            cv2.putText(frame, "5", (WIDTH-50, 50), font, 2, (0, 0, 255), 3, line)
-        elif p2_move == 6:
-            cv2.putText(frame, "6", (WIDTH-50, 50), font, 2, (0, 0, 255), 3, line)
-        elif p2_move == -1:
-            cv2.putText(frame, "No Hand Detected", (WIDTH-50, 50), font, 2, (0, 0, 255), 3, line)
-        elif p2_move == -2:
-            cv2.putText(frame, "Reposition Your Hand", (WIDTH-50, 50), font, 2, (0, 0, 255), 3, line)
-        elif p2_move == -3:
-            cv2.putText(frame, "error!", (WIDTH-50, 50), font, 2, (0, 0, 255), 3, line)
-
-        # merge the player outputs to the main frame
-        frame[p1_y1:p1_y2, p1_x1:p1_x2, :] = p1_frame
-        frame[p2_y1:p2_y2, p2_x1:p2_x2, :] = p2_frame
-
-        # display the frame
-        cv2.imshow('frame', frame)
-        cv2.imshow('player 1 thresh', p1_bin)
-        cv2.imshow('player 2 thresh', p2_bin)
-
-    if cv2.waitKey(25) & 0xFF == ord('q'):
-        break
-
-# when everything done, release the capture
-cap.release()
-cv2.destroyAllWindows()
+pygame.quit()
