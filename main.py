@@ -1,11 +1,18 @@
 import numpy as np
 import pygame
 import cv2
+from util.threshold_generator import get_thresholds
+from util.predict import get_player_move
+
 
 # user input variables
 DEBUGGING_MODE = True           # make this flag True to enable debugging mode
 CAMERA_NUMBER = 1               # default is 0
 FLIP_CAMERA = True              # to flip camera horizontally
+
+
+# get the thresholds from a opencv ui for processing
+p1_bin_thresholds, p2_bin_thresholds, p1_hsv_thresholds, p2_hsv_thresholds = get_thresholds(CAMERA_NUMBER)
 
 
 # initialize pygame
@@ -14,17 +21,22 @@ pygame.init()
 # opencv video capture
 cap = cv2.VideoCapture(CAMERA_NUMBER, cv2.CAP_DSHOW)
 
-
 # get video frame properties
 _, frame = cap.read()
 HEIGHT = frame.shape[0]
 WIDTH = frame.shape[1]
 
+# defining player areas and it's coordinates
+gap = 20
+p1_x1, p1_y1 = (gap, int(HEIGHT / 3))
+p1_x2, p1_y2 = (int(WIDTH / 2 - gap), HEIGHT - gap)
+p2_x1, p2_y1 = (int(WIDTH / 2 + gap), int(HEIGHT / 3))
+p2_x2, p2_y2 = (int(WIDTH - gap), HEIGHT - gap)
+
 
 # global variables
 running = cap.isOpened()
 pause_state = 0
-
 
 # Input key states (keyboard)
 SPACE_BAR_PRESSED = 0
@@ -106,9 +118,24 @@ while running:
     if FLIP_CAMERA:
         frame = cv2.flip(frame, 1)
 
+    # OPENCV Processing to get predictions#
 
+    # cutout two sub images representing player areas
+    player_1_img = frame[p1_y1:p1_y2, p1_x1:p1_x2, :].copy()
+    player_2_img = frame[p2_y1:p2_y2, p2_x1:p2_x2, :].copy()
 
-    ##############################
+    # draw demarcation areas on the frame
+    cv2.line(frame, (int(WIDTH / 2), 0), (int(WIDTH / 2), HEIGHT), (0, 255, 0), 2)
+    cv2.rectangle(frame, (p1_x1, p1_y1), (p1_x2, p1_y2), (0, 255, 0), 2)
+    cv2.rectangle(frame, (p2_x1, p2_y1), (p2_x2, p2_y2), (0, 255, 0), 2)
+
+    # get both the player moves
+    p1_move, p1_frame, p1_bin = get_player_move(player_1_img, p1_bin_thresholds, p1_hsv_thresholds)
+    p2_move, p2_frame, p2_bin = get_player_move(player_2_img, p2_bin_thresholds, p2_hsv_thresholds)
+
+    # see the predictions
+    if DEBUGGING_MODE:
+        print("P1: " + str(p1_move) + "\t" + "P2: " + str(p2_move))
 
     # view opencv perspective if debugging mode is on
     if DEBUGGING_MODE:
