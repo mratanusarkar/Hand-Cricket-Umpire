@@ -4,7 +4,11 @@ import math
 from .threshold import get_bin_images_from_thresh_list, get_hsv_images_from_thresh_list
 
 
-def get_player_move(img, bin_thresh, hsv_thresh):
+def get_player_move(img, bin_thresh, hsv_thresh, debug=False, player=1):
+
+    # define modes and tunings
+    mode = "hsv"    # options: "bin", "hsv", "all"
+
     # return variable
     move_estimate = 0
 
@@ -13,9 +17,24 @@ def get_player_move(img, bin_thresh, hsv_thresh):
     hsv_images = get_hsv_images_from_thresh_list(img, hsv_thresh)
 
     # combine them to get the ultimate 2D bin image of the hand
-    img_th_combined = np.zeros_like(bin_images[0])
+    img_bin_combined = np.zeros_like(bin_images[0])
+    img_hsv_combined = np.zeros_like(hsv_images[0])
+
     for i in range(len(bin_images)):
-        img_th_combined = img_th_combined + bin_images[i] + hsv_images[i]
+        img_bin_combined = img_bin_combined + bin_images[i]
+        img_hsv_combined = img_hsv_combined + hsv_images[i]
+
+    if mode == "bin":
+        img_th_combined = img_bin_combined
+    if mode == "hsv":
+        img_th_combined = img_hsv_combined
+    if mode == "all":
+        img_th_combined = img_bin_combined + img_hsv_combined
+
+    if debug:
+        cv2.imshow("img_bin_combined " + str(player), img_bin_combined)
+        cv2.imshow("img_hsv_combined " + str(player), img_hsv_combined)
+        cv2.imshow("img_th_combined " + str(player), img_th_combined)
 
     # dilate and blur to remove the noises
     kernel = np.ones((3, 3), np.uint8)
@@ -119,6 +138,9 @@ def get_player_move(img, bin_thresh, hsv_thresh):
                 # cv2.putText(img, "Reposition Your Hand", (0, 50), font, 2, (0, 0, 255), 3, line)
                 print("Reposition Your Hand")
                 move_estimate = -2
+
+            if debug:
+                cv2.imshow("player " + str(player), img)
     except:
         print("No hand and defects fount! error in processing the image!")
         move_estimate = -3
