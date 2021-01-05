@@ -7,7 +7,7 @@ from .threshold import get_bin_images_from_thresh_list, get_hsv_images_from_thre
 def get_player_move(img, bin_thresh, hsv_thresh, debug=False, player=1):
 
     # define modes and tunings
-    mode = "hsv"    # options: "bin", "hsv", "all"
+    mode = "bin"    # options: "bin", "hsv", "all"
 
     # return variable
     move_estimate = 0
@@ -138,12 +138,14 @@ def get_player_move(img, bin_thresh, hsv_thresh, debug=False, player=1):
                 # cv2.putText(img, "Reposition Your Hand", (0, 50), font, 2, (0, 0, 255), 3, line)
                 print("Reposition Your Hand")
                 move_estimate = -2
-
-            if debug:
-                cv2.imshow("player " + str(player), img)
     except:
         print("No hand and defects fount! error in processing the image!")
         move_estimate = -3
 
+    # debugging logs
+    if debug:
+        cv2.imshow("player " + str(player), img)
+        # print("player " + str(player) + " estimate: " + str(move_estimate))
+
     # return the move, the modified frame, the binary image of the hand
-    return move_estimate, img, img_th_combined
+    return move_estimate
