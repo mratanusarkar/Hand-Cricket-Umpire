@@ -130,8 +130,8 @@ while running:
     cv2.rectangle(frame, (p2_x1, p2_y1), (p2_x2, p2_y2), (0, 255, 0), 2)
 
     # get both the player moves
-    p1_move, p1_frame, p1_bin = get_player_move(player_1_img, p1_bin_thresholds, p1_hsv_thresholds)
-    p2_move, p2_frame, p2_bin = get_player_move(player_2_img, p2_bin_thresholds, p2_hsv_thresholds)
+    p1_move, p1_frame, p1_bin = get_player_move(player_1_img, p1_bin_thresholds, p1_hsv_thresholds, DEBUGGING_MODE, 1)
+    p2_move, p2_frame, p2_bin = get_player_move(player_2_img, p2_bin_thresholds, p2_hsv_thresholds, DEBUGGING_MODE, 2)
 
     # see the predictions
     if DEBUGGING_MODE:
