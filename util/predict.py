@@ -109,7 +109,7 @@ def get_player_move(img, bin_thresh, hsv_thresh, debug=False, player=1):
             if defect_count == 0:
                 if area_contour < 2000:
                     # cv2.putText(img, "No Hand Detected", (0, 50), font, 2, (0, 0, 255), 3, line)
-                    print("No Hand Detected")
+                    print("Player " + str(player) + "No Hand Detected")
                     move_estimate = -1
                 else:
                     # zero
@@ -136,10 +136,10 @@ def get_player_move(img, bin_thresh, hsv_thresh, debug=False, player=1):
                 move_estimate = 5
             else:
                 # cv2.putText(img, "Reposition Your Hand", (0, 50), font, 2, (0, 0, 255), 3, line)
-                print("Reposition Your Hand")
+                print("Player " + str(player) + " Reposition Your Hand")
                 move_estimate = -2
     except:
-        print("No hand and defects fount! error in processing the image!")
+        print("Player " + str(player) + "No hand and defects fount! error in processing the image!")
         move_estimate = -3
 
     # debugging logs
